@@ -63,7 +63,7 @@ __all__ = ["Texttable", "ArraySizeError"]
 
 __author__ = 'Gerome Fournier <jef(at)foutaise.org>'
 __license__ = 'MIT'
-__version__ = '1.6.7'
+__version__ = '1.6.7-color'
 __credits__ = """\
 Jeff Kowalczyk:
     - textwrap improved import
@@ -91,8 +91,13 @@ frinkelpi:
     - preserve empty lines
 """
 
+import re
 import sys
 import unicodedata
+
+ANSI_ESCAPE = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
+
+import ansiwrap
 
 # define a text wrapping function to wrap some text
 # to a specific width:
@@ -101,12 +106,13 @@ import unicodedata
 try:
     import cjkwrap
     def textwrapper(txt, width):
-        return cjkwrap.wrap(txt, width)
+        # cjkwrap can cut through the escape sequence and its len does not handle escape sequences
+        return ansiwrap.ansi_terminate_lines(cjkwrap.wrap(txt, width))
+    sys.stderr.write("Can't reliably linebreak colors in with jkwrap yet :(\n")
 except ImportError:
     try:
-        import textwrap
         def textwrapper(txt, width):
-            return textwrap.wrap(txt, width)
+            return ansiwrap.wrap(txt, width)
     except ImportError:
         sys.stderr.write("Can't import textwrap module!\n")
         raise
@@ -160,7 +166,7 @@ def len(iterable):
     """Redefining len here so it will be able to work with non-ASCII characters
     """
     if isinstance(iterable, bytes_type) or isinstance(iterable, unicode_type):
-        return sum([uchar_width(c) for c in obj2unicode(iterable)])
+        return sum([uchar_width(c) for c in ANSI_ESCAPE.sub('', obj2unicode(iterable))])
     else:
         return iterable.__len__()
 
@@ -697,7 +703,7 @@ class Texttable:
         line_wrapped = []
         for cell, width in zip(line, self._width):
             array = []
-            for c in cell.split('\n'):
+            for c in ansiwrap.ansi_terminate_lines(cell.split('\n')):
                 if c.strip() == "":
                     array.append("")
                 else:

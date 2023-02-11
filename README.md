@@ -1,6 +1,6 @@
 # texttable
 
-Python module to create simple ASCII tables
+Python module to create simple ASCII tables, slight modification to handle colorized text
 
 ## Availability
 
